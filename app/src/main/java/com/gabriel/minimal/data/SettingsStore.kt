@@ -21,12 +21,15 @@ class SettingsStore(private val context: Context) {
 
     suspend fun update(transform: (LauncherConfig) -> LauncherConfig) {
         context.dataStore.edit { prefs ->
-            prefs[configKey] = json.encodeToString(transform(prefs[configKey].decodeOrDefault()))
+            prefs[configKey] = json.encodeToString(
+                LauncherConfig.serializer(),
+                transform(prefs[configKey].decodeOrDefault()),
+            )
         }
     }
 
     /** A corrupt or older blob falls back to defaults rather than crashing the home screen. */
     private fun String?.decodeOrDefault(): LauncherConfig =
-        this?.let { runCatching { json.decodeFromString<LauncherConfig>(it) }.getOrNull() }
+        this?.let { runCatching { json.decodeFromString(LauncherConfig.serializer(), it) }.getOrNull() }
             ?: LauncherConfig()
 }
