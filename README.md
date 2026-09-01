@@ -5,21 +5,51 @@ daily time limits.
 
 ## Status
 
-Scaffold. Written but **never compiled** — there was no Android SDK on this
-machine when it was generated. Expect a first-sync round of small fixes.
+Compiles and packages. **Not yet run on a device** — no behaviour has been
+verified beyond the compiler accepting it.
 
 ## Build
 
+Requires a JDK (17+) and the Android SDK with platform 35 and build-tools 35.
+Without Android Studio:
+
 ```sh
-brew install --cask android-studio   # then run the first-launch SDK wizard
-open -a "Android Studio" .
+brew install --cask android-commandlinetools
+sdkmanager --licenses
+sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 ```
 
-Android Studio will regenerate the missing `gradle/wrapper/gradle-wrapper.jar`
-on first sync, and will offer to upgrade AGP/Kotlin — accept it.
+Point the project at the SDK in `local.properties` (not committed):
 
-Then: Run ▸ app, and set it as the home app from in-app **Settings ▸ Set as
-default home app**.
+```properties
+sdk.dir=/opt/homebrew/share/android-commandlinetools
+```
+
+Then:
+
+```sh
+export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+./gradlew installDebug
+```
+
+Set it as the home app from in-app **Settings ▸ Set as default home app**, and
+grant usage access (needed for daily limits):
+
+```sh
+adb shell appops set com.gabriel.minimal GET_USAGE_STATS allow
+```
+
+### If it crashes while it is your default home
+
+The phone is not bricked — reboot to safe mode, or:
+
+```sh
+adb shell cmd package set-home-activity com.google.android.apps.nexuslauncher/.NexusLauncherActivity
+```
+
+(component varies by OEM; Samsung is
+`com.sec.android.app.launcher/.activities.LauncherActivity`)
 
 ## The three features
 
