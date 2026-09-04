@@ -1,6 +1,8 @@
 package com.gabriel.minimal.ui
 
 import android.app.role.RoleManager
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
@@ -74,6 +76,12 @@ fun SettingsScreen(
             onClick = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
         )
 
+        SettingRow(
+            title = "System navigation",
+            subtitle = "Switch between gestures and three buttons",
+            onClick = { openSystemNavigationSettings(context) },
+        )
+
         HorizontalDivider(Modifier.padding(vertical = 16.dp))
         Header("Home screen")
 
@@ -124,6 +132,38 @@ fun SettingsScreen(
             },
         )
     }
+}
+
+/**
+ * Opens the system navigation-mode picker.
+ *
+ * An app cannot change the navigation mode itself — it lives in Settings.Secure
+ * behind WRITE_SECURE_SETTINGS, a signature permission — so the most any launcher
+ * can do is send the user to the right screen.
+ *
+ * There is no public intent for that screen either: AOSP and every OEM skin expose
+ * it as a private Settings activity whose name varies (verified as
+ * Settings${'$'}NavigationModeSettingsActivity on HyperOS 3). Try the known components
+ * in order, then fall back to the top-level Settings app, which always resolves.
+ */
+private fun openSystemNavigationSettings(context: Context) {
+    val candidates = listOf(
+        "com.android.settings.Settings${'$'}NavigationModeSettingsActivity",
+        "com.android.settings.Settings${'$'}GestureNavigationSettingsActivity",
+    )
+
+    for (className in candidates) {
+        val intent = Intent(Intent.ACTION_MAIN)
+            .setComponent(ComponentName("com.android.settings", className))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (intent.resolveActivity(context.packageManager) != null) {
+            if (runCatching { context.startActivity(intent) }.isSuccess) return
+        }
+    }
+
+    context.startActivity(
+        Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+    )
 }
 
 @Composable
