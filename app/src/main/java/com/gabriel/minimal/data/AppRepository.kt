@@ -3,6 +3,8 @@ package com.gabriel.minimal.data
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.LauncherApps
+import android.os.Handler
+import android.os.HandlerThread
 import android.os.UserHandle
 import android.os.UserManager
 import kotlinx.coroutines.channels.awaitClose
@@ -53,9 +55,19 @@ class AppRepository(context: Context) {
         )
     }
 
-    /** Emits the current app list, then again whenever packages change. */
+    /**
+     * Emits the current app list, then again whenever packages change.
+     *
+     * The callback gets its own [HandlerThread]: [LauncherApps.registerCallback]
+     * builds a [Handler] on the calling thread when none is supplied, and this flow
+     * is collected on Dispatchers.IO, whose workers have no Looper — that throws.
+     * A dedicated Looper also keeps the [loadApps] PackageManager query off the
+     * main thread, which a main-looper Handler would not.
+     */
     fun appsFlow(): Flow<List<LauncherApp>> = callbackFlow {
         trySend(loadApps())
+
+        val callbackThread = HandlerThread("launcher-apps-callback").apply { start() }
 
         val callback = object : LauncherApps.Callback() {
             private fun refresh() { trySend(loadApps()) }
@@ -70,7 +82,10 @@ class AppRepository(context: Context) {
             ) = refresh()
         }
 
-        launcherApps.registerCallback(callback)
-        awaitClose { launcherApps.unregisterCallback(callback) }
+        launcherApps.registerCallback(callback, Handler(callbackThread.looper))
+        awaitClose {
+            launcherApps.unregisterCallback(callback)
+            callbackThread.quitSafely()
+        }
     }
 }
