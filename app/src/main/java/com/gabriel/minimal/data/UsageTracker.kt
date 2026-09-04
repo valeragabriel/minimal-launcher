@@ -34,7 +34,20 @@ class UsageTracker(private val context: Context) {
 
         val now = System.currentTimeMillis()
         val totals = mutableMapOf<String, Long>()
-        val resumedAt = mutableMapOf<String, Long>()
+
+        // Exactly one package is foreground at a time, and it changes only when a
+        // *different* package resumes. Do not track spans per activity: a single app
+        // hands off between its own activities constantly (Chrome -> FirstRunActivity),
+        // and one activity's STOPPED would close the span another one owns, silently
+        // discarding the real foreground time.
+        var foreground: String? = null
+        var since = 0L
+
+        fun close(at: Long) {
+            val pkg = foreground ?: return
+            totals[pkg] = (totals[pkg] ?: 0L) + (at - since)
+            foreground = null
+        }
 
         val events = usageStats.queryEvents(startOfToday(), now)
         val event = UsageEvents.Event()
@@ -42,24 +55,22 @@ class UsageTracker(private val context: Context) {
             events.getNextEvent(event)
             when (event.eventType) {
                 UsageEvents.Event.ACTIVITY_RESUMED -> {
-                    resumedAt[event.packageName] = event.timeStamp
+                    if (foreground != event.packageName) {
+                        close(event.timeStamp)
+                        foreground = event.packageName
+                        since = event.timeStamp
+                    }
+                    // Same package resuming another of its activities: span continues.
                 }
 
-                UsageEvents.Event.ACTIVITY_PAUSED,
-                UsageEvents.Event.ACTIVITY_STOPPED -> {
-                    val from = resumedAt.remove(event.packageName)
-                    if (from != null) {
-                        totals[event.packageName] =
-                            (totals[event.packageName] ?: 0L) + (event.timeStamp - from)
-                    }
-                }
+                // Screen off ends foreground time even though nothing else resumes.
+                UsageEvents.Event.SCREEN_NON_INTERACTIVE,
+                UsageEvents.Event.DEVICE_SHUTDOWN -> close(event.timeStamp)
             }
         }
 
         // Whatever is on screen right now has no closing event yet.
-        resumedAt.forEach { (pkg, from) ->
-            totals[pkg] = (totals[pkg] ?: 0L) + (now - from)
-        }
+        close(now)
         return totals
     }
 

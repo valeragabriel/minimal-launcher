@@ -37,7 +37,10 @@ fun LimitReachedDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("You are done with $appLabel today") },
-        text = { Text("$minutesUsed minutes used, limit is $limitMinutes.") },
+        text = {
+            val used = if (minutesUsed == 1) "1 minute" else "$minutesUsed minutes"
+            Text("$used used, limit is $limitMinutes.")
+        },
         confirmButton = {
             TextButton(onClick = onOpenAnyway, enabled = remaining <= 0) {
                 Text(if (remaining > 0) "Open anyway ($remaining)" else "Open anyway")
