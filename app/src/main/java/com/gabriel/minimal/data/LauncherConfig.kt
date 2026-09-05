@@ -25,7 +25,7 @@ data class LauncherConfig(
     /** package -> minutes of foreground time allowed per day. */
     val dailyLimitMinutes: Map<String, Int> = emptyMap(),
     val showClock: Boolean = true,
-    val clockAlign: ClockAlign = ClockAlign.Start,
+    val clockAlign: ClockAlign = ClockAlign.Center,
     /**
      * Non-zero when a background photo is set. The value is the time it was chosen,
      * which doubles as a cache key so the decoded bitmap is reloaded when it changes.

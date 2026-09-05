@@ -133,13 +133,13 @@ fun SettingsScreen(
                 )
             },
         )
-        if (state.config.backgroundStamp != 0L) {
-            SettingRow(
-                title = "Remove background photo",
-                subtitle = null,
-                onClick = onClearBackground,
-            )
-        }
+        val hasPhoto = state.config.backgroundStamp != 0L
+        SettingRow(
+            title = "Remove background photo",
+            subtitle = if (hasPhoto) "Go back to plain black" else "No photo set",
+            enabled = hasPhoto,
+            onClick = onClearBackground,
+        )
 
         ToggleRow(
             "Swap All apps / Settings",
@@ -241,17 +241,23 @@ private fun Header(text: String) {
 }
 
 @Composable
-private fun SettingRow(title: String, subtitle: String?, onClick: () -> Unit) {
+private fun SettingRow(
+    title: String,
+    subtitle: String?,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
     Column(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 10.dp),
     ) {
         Text(
             title,
             style = MaterialTheme.typography.bodyLarge,
-            color = SettingsTitleColor(),
+            color = if (enabled) SettingsTitleColor()
+            else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.28f),
         )
         if (subtitle != null) {
             Text(
