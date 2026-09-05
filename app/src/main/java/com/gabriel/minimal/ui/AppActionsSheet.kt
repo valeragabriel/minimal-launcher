@@ -52,7 +52,7 @@ fun AppActionsSheet(
         ) {
             Text(app.label, style = MaterialTheme.typography.bodyLarge)
             Text(
-                "${state.minutesUsed(app.packageName)} min today",
+                "${formatDuration(state.minutesUsed(app.packageName))} today",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.padding(bottom = 12.dp),
@@ -62,7 +62,7 @@ fun AppActionsSheet(
                 onToggleHome(); onDismiss()
             }
             SheetAction(
-                if (currentLimit != null) "Daily limit: $currentLimit min" else "Set daily limit",
+                if (currentLimit != null) "Daily limit: ${formatDuration(currentLimit)}" else "Set daily limit",
             ) { showLimitDialog = true }
 
             if (state.config.lists.isNotEmpty()) {

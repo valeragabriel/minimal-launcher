@@ -18,17 +18,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.gabriel.minimal.data.LauncherApp
 import com.gabriel.minimal.ui.AppActionsSheet
 import com.gabriel.minimal.ui.DrawerScreen
 import com.gabriel.minimal.ui.HomeScreen
 import com.gabriel.minimal.ui.LimitReachedDialog
 import com.gabriel.minimal.ui.MinimalTheme
+import com.gabriel.minimal.ui.ScreenTimeScreen
 import com.gabriel.minimal.ui.SettingsScreen
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 
-private enum class Screen { Home, Drawer, Settings }
+private enum class Screen { Home, Drawer, Settings, ScreenTime }
 
 class MainActivity : ComponentActivity() {
 
@@ -52,13 +57,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        // Usage only changes while we are off screen, so this is the one place
-        // it needs recomputing.
-        viewModel.refreshUsage()
-    }
-
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -74,6 +72,19 @@ private fun LauncherRoot(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val blockedApp by viewModel.blockedApp.collectAsStateWithLifecycle()
 
+    // Recount while visible rather than only on resume. The launcher's own span is
+    // still open while the home screen is up, so a resume-only refresh leaves the
+    // screen-time figure frozen at whatever it was when you last came back to it.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                viewModel.refreshUsage()
+                delay(REFRESH_INTERVAL_MS)
+            }
+        }
+    }
+
     var screen by remember { mutableStateOf(Screen.Home) }
     var sheetApp by remember { mutableStateOf<LauncherApp?>(null) }
 
@@ -85,7 +96,10 @@ private fun LauncherRoot(
         }
     }
 
-    BackHandler(enabled = screen != Screen.Home) { screen = Screen.Home }
+    // Screen time is reached from Settings, so back should return there, not home.
+    BackHandler(enabled = screen != Screen.Home) {
+        screen = if (screen == Screen.ScreenTime) Screen.Settings else Screen.Home
+    }
 
     val rootModifier = Modifier
         .fillMaxSize()
@@ -118,6 +132,12 @@ private fun LauncherRoot(
                 onPickBackground = viewModel::setBackgroundImage,
                 onClearBackground = viewModel::clearBackgroundImage,
                 onSetSwapBottomActions = viewModel::setSwapBottomActions,
+                onOpenScreenTime = { screen = Screen.ScreenTime },
+            )
+
+            Screen.ScreenTime -> ScreenTimeScreen(
+                state = state,
+                onLongPress = { sheetApp = it },
             )
         }
     }
@@ -146,3 +166,5 @@ private fun LauncherRoot(
         )
     }
 }
+
+private const val REFRESH_INTERVAL_MS = 20_000L

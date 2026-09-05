@@ -38,6 +38,28 @@ data class LauncherUiState(
 
     fun appsIn(list: AppList): List<LauncherApp> = list.packages.mapNotNull(::app)
 
+    /**
+     * Everything foregrounded today, this launcher included: it is time the screen
+     * was on with an app in front, which is what "time on the phone" means.
+     */
+    fun totalMinutesToday(): Int =
+        TimeUnit.MILLISECONDS.toMinutes(usageTodayMillis.values.sum()).toInt()
+
+    /**
+     * Named apps used today, longest first.
+     *
+     * Packages with no launchable activity — system services, background providers —
+     * cannot be labelled, so they are dropped here. That means these rows sum to less
+     * than [totalMinutesToday], which stays the honest total.
+     */
+    fun usageRanking(): List<Pair<LauncherApp, Int>> =
+        usageTodayMillis.entries
+            .mapNotNull { (pkg, millis) ->
+                app(pkg)?.to(TimeUnit.MILLISECONDS.toMinutes(millis).toInt())
+            }
+            .filter { (_, minutes) -> minutes > 0 }
+            .sortedByDescending { (_, minutes) -> minutes }
+
     fun minutesUsed(packageName: String): Int =
         TimeUnit.MILLISECONDS.toMinutes(usageTodayMillis[packageName] ?: 0L).toInt()
 

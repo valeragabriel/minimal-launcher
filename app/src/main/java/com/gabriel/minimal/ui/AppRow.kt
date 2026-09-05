@@ -42,7 +42,7 @@ fun AppRow(
         )
         if (minutesLeft != null) {
             Text(
-                text = if (minutesLeft > 0) "$minutesLeft min left today" else "limit reached",
+                text = if (minutesLeft > 0) "${formatDuration(minutesLeft)} left today" else "limit reached",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.outline,
             )

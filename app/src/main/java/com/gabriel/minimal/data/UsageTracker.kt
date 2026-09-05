@@ -63,7 +63,15 @@ class UsageTracker(private val context: Context) {
                     // Same package resuming another of its activities: span continues.
                 }
 
-                // Screen off ends foreground time even though nothing else resumes.
+                // The foreground app pausing ends the span. Relying only on the next
+                // package resuming misses screen-off, and SCREEN_NON_INTERACTIVE cannot
+                // be depended on — some devices never emit it. An app handing off
+                // between its own activities pauses and resumes within the same
+                // package, which costs a sub-second gap rather than a whole span.
+                UsageEvents.Event.ACTIVITY_PAUSED -> {
+                    if (foreground == event.packageName) close(event.timeStamp)
+                }
+
                 UsageEvents.Event.SCREEN_NON_INTERACTIVE,
                 UsageEvents.Event.DEVICE_SHUTDOWN -> close(event.timeStamp)
             }

@@ -1,8 +1,6 @@
 package com.gabriel.minimal.ui
 
 import android.app.role.RoleManager
-import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -54,6 +52,7 @@ fun SettingsScreen(
     onPickBackground: (Uri) -> Unit,
     onClearBackground: () -> Unit,
     onSetSwapBottomActions: (Boolean) -> Unit,
+    onOpenScreenTime: () -> Unit,
 ) {
     val context = LocalContext.current
     var showNewListDialog by remember { mutableStateOf(false) }
@@ -71,6 +70,16 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 28.dp, vertical = 16.dp),
     ) {
+        Header("Today")
+
+        InfoRow(
+            title = if (hasUsageAccess) formatDuration(state.totalMinutesToday()) else "—",
+            subtitle = if (hasUsageAccess) "Screen time today — tap for the breakdown"
+            else "Grant usage access to track this",
+            onClick = onOpenScreenTime.takeIf { hasUsageAccess },
+        )
+
+        HorizontalDivider(Modifier.padding(vertical = 16.dp))
         Header("Setup")
 
         SettingRow(
@@ -90,12 +99,6 @@ fun SettingsScreen(
             subtitle = if (hasUsageAccess) "Granted — daily limits are active"
             else "Not granted — daily limits will not work",
             onClick = { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
-        )
-
-        SettingRow(
-            title = "System navigation",
-            subtitle = "Switch between gestures and three buttons",
-            onClick = { openSystemNavigationSettings(context) },
         )
 
         HorizontalDivider(Modifier.padding(vertical = 16.dp))
@@ -194,39 +197,6 @@ fun SettingsScreen(
     }
 }
 
-/**
- * Opens the system navigation-mode picker.
- *
- * An app cannot change the navigation mode itself — it lives in Settings.Secure
- * behind WRITE_SECURE_SETTINGS, a signature permission — so the most any launcher
- * can do is send the user to the right screen.
- *
- * There is no public intent for that screen either: AOSP and every OEM skin expose
- * it as a private Settings activity whose name varies (verified as
- * Settings${'$'}NavigationModeSettingsActivity on HyperOS 3). Try the known components
- * in order, then fall back to the top-level Settings app, which always resolves.
- */
-private fun openSystemNavigationSettings(context: Context) {
-    val candidates = listOf(
-        "com.android.settings.Settings${'$'}NavigationModeSettingsActivity",
-        "com.android.settings.Settings${'$'}GestureNavigationSettingsActivity",
-    )
-
-    for (className in candidates) {
-        val intent = Intent(Intent.ACTION_MAIN)
-            .setComponent(ComponentName("com.android.settings", className))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (intent.resolveActivity(context.packageManager) != null) {
-            if (runCatching { context.startActivity(intent) }.isSuccess) return
-        }
-    }
-
-    context.startActivity(
-        Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-    )
-}
-
-/** Titles sit a step below full contrast so the screen reads quietly. */
 @Composable
 private fun SettingsTitleColor() = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.62f)
 
@@ -238,6 +208,29 @@ private fun Header(text: String) {
         color = MaterialTheme.colorScheme.outline,
         modifier = Modifier.padding(bottom = 8.dp),
     )
+}
+
+/** Reads as a value, not a disabled action — so it keeps full contrast. */
+@Composable
+private fun InfoRow(title: String, subtitle: String, onClick: (() -> Unit)? = null) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(vertical = 10.dp),
+    ) {
+        Text(
+            title,
+            style = MaterialTheme.typography.displayLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+            subtitle,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.outline,
+        )
+    }
 }
 
 @Composable

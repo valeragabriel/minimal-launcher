@@ -38,8 +38,7 @@ fun LimitReachedDialog(
         onDismissRequest = onDismiss,
         title = { Text("You are done with $appLabel today") },
         text = {
-            val used = if (minutesUsed == 1) "1 minute" else "$minutesUsed minutes"
-            Text("$used used, limit is $limitMinutes.")
+            Text("${formatDuration(minutesUsed)} used, limit is ${formatDuration(limitMinutes)}.")
         },
         confirmButton = {
             TextButton(onClick = onOpenAnyway, enabled = remaining <= 0) {
