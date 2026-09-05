@@ -96,7 +96,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     /** Called from onResume — usage only changes while we are *not* on screen. */
     fun refreshUsage() {
         viewModelScope.launch {
+            val ownPackage = getApplication<Application>().packageName
             usageToday.value = withContext(Dispatchers.IO) { usage.todayForegroundMillis() }
+                // Time on the home screen is not time spent on the phone, and counting
+                // it would let the launcher inflate the very number it exists to lower.
+                // Filtered here so the total and the breakdown both drop it.
+                .filterKeys { it != ownPackage }
         }
     }
 
