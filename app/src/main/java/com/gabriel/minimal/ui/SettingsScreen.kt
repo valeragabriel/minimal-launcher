@@ -59,6 +59,21 @@ fun SettingsScreen(
 
     // The photo picker needs no storage permission and returns a temporary
     // content:// URI, which the ViewModel copies into internal storage.
+    // HyperOS opens the ROLE_HOME dialog and closes it immediately without granting
+    // anything, so the request silently does nothing. Check whether the role actually
+    // landed once the dialog returns, and send the user to the system launcher picker
+    // when it did not.
+    val requestHomeRole = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        val held = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+            context.getSystemService(RoleManager::class.java)
+                ?.isRoleHeld(RoleManager.ROLE_HOME) == true
+        if (!held) {
+            runCatching { context.startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) }
+        }
+    }
+
     val pickPhoto = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri -> uri?.let(onPickBackground) }
@@ -86,11 +101,13 @@ fun SettingsScreen(
             title = "Set as default home app",
             subtitle = "Required for this to replace your launcher",
             onClick = {
-                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val roleIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     context.getSystemService(RoleManager::class.java)
                         ?.createRequestRoleIntent(RoleManager.ROLE_HOME)
                 } else null
-                context.startActivity(intent ?: Intent(Settings.ACTION_HOME_SETTINGS))
+
+                if (roleIntent != null) requestHomeRole.launch(roleIntent)
+                else context.startActivity(Intent(Settings.ACTION_HOME_SETTINGS))
             },
         )
 
