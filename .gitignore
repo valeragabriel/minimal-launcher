@@ -8,3 +8,7 @@ captures/
 .externalNativeBuild
 .cxx
 .env.build
+keystore.properties
+*.jks
+*.keystore
+dist/
