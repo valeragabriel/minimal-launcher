@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.gabriel.minimal.LauncherUiState
@@ -225,6 +226,10 @@ private fun openSystemNavigationSettings(context: Context) {
     )
 }
 
+/** Titles sit a step below full contrast so the screen reads quietly. */
+@Composable
+private fun SettingsTitleColor() = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.62f)
+
 @Composable
 private fun Header(text: String) {
     Text(
@@ -243,11 +248,16 @@ private fun SettingRow(title: String, subtitle: String?, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(vertical = 10.dp),
     ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge)
+        Text(
+            title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = SettingsTitleColor(),
+        )
         if (subtitle != null) {
             Text(
                 subtitle,
                 style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.outline,
             )
         }
@@ -263,7 +273,11 @@ private fun ToggleRow(title: String, checked: Boolean, onChange: (Boolean) -> Un
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge)
+        Text(
+            title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = SettingsTitleColor(),
+        )
         Switch(checked = checked, onCheckedChange = onChange)
     }
 }
