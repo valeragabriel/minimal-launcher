@@ -1,5 +1,8 @@
 package com.gabriel.minimal.ui
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,13 +27,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gabriel.minimal.LauncherUiState
+import com.gabriel.minimal.LauncherViewModel
+import com.gabriel.minimal.data.ClockAlign
 import com.gabriel.minimal.data.LauncherApp
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
+import java.io.File
 import java.time.format.DateTimeFormatter
+import kotlin.math.max
 
 @Composable
 fun HomeScreen(
@@ -40,15 +50,18 @@ fun HomeScreen(
     onOpenDrawer: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .systemBarsPadding()
-            .padding(horizontal = 28.dp),
-    ) {
+    Box(Modifier.fillMaxSize()) {
+        BackgroundPhoto(state.config.backgroundStamp)
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .systemBarsPadding()
+                .padding(horizontal = 28.dp),
+        ) {
         if (state.config.showClock) {
             Spacer(Modifier.height(48.dp))
-            Clock()
+            Clock(state.config.clockAlign)
         }
 
         Spacer(Modifier.height(32.dp))
@@ -79,14 +92,62 @@ fun HomeScreen(
                 .padding(bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            TextButton(onClick = onOpenDrawer) { Text("All apps") }
-            TextButton(onClick = onOpenSettings) { Text("Settings") }
+            val drawer = @Composable { TextButton(onClick = onOpenDrawer) { Text("All apps") } }
+            val settings = @Composable { TextButton(onClick = onOpenSettings) { Text("Settings") } }
+            if (state.config.swapBottomActions) {
+                settings(); drawer()
+            } else {
+                drawer(); settings()
+            }
+        }
         }
     }
 }
 
+/**
+ * The user's photo, behind a scrim.
+ *
+ * Decoded straight from internal storage with downsampling rather than through an
+ * image-loading library: this is one bitmap, loaded once, and a launcher should not
+ * carry a dependency for it. [stamp] changes whenever a new photo is chosen, which
+ * is what invalidates the cached decode.
+ */
 @Composable
-private fun Clock() {
+private fun BackgroundPhoto(stamp: Long) {
+    val context = LocalContext.current
+    val photo = remember(stamp) {
+        if (stamp == 0L) return@remember null
+        val file = File(context.filesDir, LauncherViewModel.BACKGROUND_FILE)
+        if (!file.exists()) return@remember null
+
+        runCatching {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(file.path, bounds)
+            val options = BitmapFactory.Options().apply {
+                inSampleSize = max(1, bounds.outWidth / TARGET_PHOTO_WIDTH)
+            }
+            BitmapFactory.decodeFile(file.path, options)?.asImageBitmap()
+        }.getOrNull()
+    } ?: return
+
+    Image(
+        bitmap = photo,
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier.fillMaxSize(),
+    )
+    // Without this the text is unreadable over a busy photo.
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.55f)),
+    )
+}
+
+private const val TARGET_PHOTO_WIDTH = 1440
+
+@Composable
+private fun Clock(align: ClockAlign) {
     var now by remember { mutableStateOf(LocalDateTime.now()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -95,7 +156,14 @@ private fun Clock() {
             delay(60_000L - (System.currentTimeMillis() % 60_000L))
         }
     }
-    Column {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = when (align) {
+            ClockAlign.Start -> Alignment.Start
+            ClockAlign.Center -> Alignment.CenterHorizontally
+            ClockAlign.End -> Alignment.End
+        },
+    ) {
         Text(
             text = now.format(DateTimeFormatter.ofPattern("HH:mm")),
             style = MaterialTheme.typography.displayLarge,

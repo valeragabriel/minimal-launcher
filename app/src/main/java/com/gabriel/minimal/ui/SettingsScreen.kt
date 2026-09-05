@@ -4,8 +4,12 @@ import android.app.role.RoleManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -35,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.gabriel.minimal.LauncherUiState
+import com.gabriel.minimal.data.ClockAlign
 
 @Composable
 fun SettingsScreen(
@@ -44,9 +49,19 @@ fun SettingsScreen(
     onDeleteList: (String) -> Unit,
     onSetShowClock: (Boolean) -> Unit,
     onSetFrictionSeconds: (Int) -> Unit,
+    onSetClockAlign: (ClockAlign) -> Unit,
+    onPickBackground: (Uri) -> Unit,
+    onClearBackground: () -> Unit,
+    onSetSwapBottomActions: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
     var showNewListDialog by remember { mutableStateOf(false) }
+
+    // The photo picker needs no storage permission and returns a temporary
+    // content:// URI, which the ViewModel copies into internal storage.
+    val pickPhoto = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri -> uri?.let(onPickBackground) }
 
     Column(
         modifier = Modifier
@@ -86,6 +101,50 @@ fun SettingsScreen(
         Header("Home screen")
 
         ToggleRow("Show clock", state.config.showClock, onSetShowClock)
+
+        if (state.config.showClock) {
+            SettingRow(
+                title = "Clock position",
+                subtitle = when (state.config.clockAlign) {
+                    ClockAlign.Start -> "Left"
+                    ClockAlign.Center -> "Centre"
+                    ClockAlign.End -> "Right"
+                },
+                onClick = {
+                    onSetClockAlign(
+                        when (state.config.clockAlign) {
+                            ClockAlign.Start -> ClockAlign.Center
+                            ClockAlign.Center -> ClockAlign.End
+                            ClockAlign.End -> ClockAlign.Start
+                        },
+                    )
+                },
+            )
+        }
+
+        SettingRow(
+            title = if (state.config.backgroundStamp == 0L) "Add a background photo"
+            else "Change background photo",
+            subtitle = "Shown behind the home screen, dimmed for readability",
+            onClick = {
+                pickPhoto.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                )
+            },
+        )
+        if (state.config.backgroundStamp != 0L) {
+            SettingRow(
+                title = "Remove background photo",
+                subtitle = null,
+                onClick = onClearBackground,
+            )
+        }
+
+        ToggleRow(
+            "Swap All apps / Settings",
+            state.config.swapBottomActions,
+            onSetSwapBottomActions,
+        )
 
         SettingRow(
             title = "Delay before \"open anyway\"",

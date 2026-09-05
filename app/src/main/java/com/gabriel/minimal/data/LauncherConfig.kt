@@ -2,6 +2,10 @@ package com.gabriel.minimal.data
 
 import kotlinx.serialization.Serializable
 
+/** Where the clock sits across the width of the home screen. */
+@Serializable
+enum class ClockAlign { Start, Center, End }
+
 @Serializable
 data class AppList(
     val id: String,
@@ -21,6 +25,16 @@ data class LauncherConfig(
     /** package -> minutes of foreground time allowed per day. */
     val dailyLimitMinutes: Map<String, Int> = emptyMap(),
     val showClock: Boolean = true,
+    val clockAlign: ClockAlign = ClockAlign.Start,
+    /**
+     * Non-zero when a background photo is set. The value is the time it was chosen,
+     * which doubles as a cache key so the decoded bitmap is reloaded when it changes.
+     * The image itself is copied into internal storage rather than referenced by its
+     * content:// URI, which would not survive a reboot.
+     */
+    val backgroundStamp: Long = 0L,
+    /** Puts Settings on the left and All apps on the right. */
+    val swapBottomActions: Boolean = false,
     /** Seconds the "open anyway" button stays disabled once a limit is hit. */
     val frictionSeconds: Int = 8,
 )

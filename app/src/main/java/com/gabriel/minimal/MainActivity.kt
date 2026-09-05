@@ -108,6 +108,10 @@ private fun LauncherRoot(
                 onDeleteList = viewModel::deleteList,
                 onSetShowClock = viewModel::setShowClock,
                 onSetFrictionSeconds = viewModel::setFrictionSeconds,
+                onSetClockAlign = viewModel::setClockAlign,
+                onPickBackground = viewModel::setBackgroundImage,
+                onClearBackground = viewModel::clearBackgroundImage,
+                onSetSwapBottomActions = viewModel::setSwapBottomActions,
             )
         }
     }

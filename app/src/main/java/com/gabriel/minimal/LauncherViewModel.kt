@@ -1,10 +1,12 @@
 package com.gabriel.minimal
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.gabriel.minimal.data.AppList
 import com.gabriel.minimal.data.AppRepository
+import com.gabriel.minimal.data.ClockAlign
 import com.gabriel.minimal.data.LauncherApp
 import com.gabriel.minimal.data.LauncherConfig
 import com.gabriel.minimal.data.SettingsStore
@@ -19,6 +21,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -143,9 +146,46 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setShowClock(show: Boolean) = edit { it.copy(showClock = show) }
 
+    fun setClockAlign(align: ClockAlign) = edit { it.copy(clockAlign = align) }
+
+    fun setSwapBottomActions(swap: Boolean) = edit { it.copy(swapBottomActions = swap) }
+
+    /**
+     * Copies the chosen image into internal storage. The picker only grants
+     * temporary read access to its content:// URI, so keeping the URI would leave
+     * the home screen with an unreadable background after a reboot.
+     */
+    fun setBackgroundImage(uri: Uri) {
+        viewModelScope.launch {
+            val copied = withContext(Dispatchers.IO) {
+                runCatching {
+                    val app = getApplication<Application>()
+                    val target = File(app.filesDir, BACKGROUND_FILE)
+                    app.contentResolver.openInputStream(uri)?.use { input ->
+                        target.outputStream().use(input::copyTo)
+                    } ?: error("could not read $uri")
+                }.isSuccess
+            }
+            if (copied) edit { it.copy(backgroundStamp = System.currentTimeMillis()) }
+        }
+    }
+
+    fun clearBackgroundImage() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                File(getApplication<Application>().filesDir, BACKGROUND_FILE).delete()
+            }
+            edit { it.copy(backgroundStamp = 0L) }
+        }
+    }
+
     fun setFrictionSeconds(seconds: Int) = edit { it.copy(frictionSeconds = seconds.coerceIn(0, 60)) }
 
     private fun edit(transform: (LauncherConfig) -> LauncherConfig) {
         viewModelScope.launch { settings.update(transform) }
+    }
+
+    companion object {
+        const val BACKGROUND_FILE = "home-background.jpg"
     }
 }
