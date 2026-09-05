@@ -8,6 +8,8 @@ data class LauncherApp(
     val activityName: String,
     val label: String,
     val user: UserHandle,
+    /** False for system apps, which the uninstall intent silently refuses. */
+    val canUninstall: Boolean,
 ) {
     /** Stable identity across reboots; [UserHandle] is not serializable. */
     val key: String get() = "$packageName/$activityName"

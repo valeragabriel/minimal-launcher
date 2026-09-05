@@ -92,6 +92,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openAppInfo(app: LauncherApp) = repository.openAppInfo(app)
 
+    fun uninstall(app: LauncherApp) = repository.uninstall(app)
+
     // ---- configuration edits -------------------------------------------------
 
     fun toggleHome(packageName: String) = edit { config ->

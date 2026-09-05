@@ -35,6 +35,7 @@ fun AppActionsSheet(
     onToggleHome: () -> Unit,
     onToggleInList: (listId: String) -> Unit,
     onSetLimit: (minutes: Int?) -> Unit,
+    onUninstall: () -> Unit,
     onAppInfo: () -> Unit,
 ) {
     var showLimitDialog by remember { mutableStateOf(false) }
@@ -77,6 +78,9 @@ fun AppActionsSheet(
                 }
             }
 
+            if (app.canUninstall) {
+                SheetAction("Uninstall") { onUninstall(); onDismiss() }
+            }
             SheetAction("App info") { onAppInfo(); onDismiss() }
         }
     }

@@ -2,7 +2,10 @@ package com.gabriel.minimal.data
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherApps
+import android.net.Uri
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.UserHandle
@@ -20,6 +23,7 @@ import kotlinx.coroutines.flow.callbackFlow
  */
 class AppRepository(context: Context) {
 
+    private val appContext = context.applicationContext
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
     private val userManager = context.getSystemService(UserManager::class.java)
 
@@ -34,8 +38,19 @@ class AppRepository(context: Context) {
                 activityName = info.componentName.className,
                 label = info.label.toString(),
                 user = user,
+                canUninstall = info.applicationInfo.isUninstallable() &&
+                    info.componentName.packageName != appContext.packageName,
             )
         }
+
+    /**
+     * A plain system app cannot be removed at all; one that has been updated can be
+     * reverted to its factory version, which the uninstall dialog presents as
+     * "uninstall updates". Offering the action anywhere else just fails silently.
+     */
+    private fun ApplicationInfo.isUninstallable(): Boolean =
+        (flags and ApplicationInfo.FLAG_SYSTEM) == 0 ||
+            (flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
 
     fun launch(app: LauncherApp) {
         launcherApps.startMainActivity(
@@ -52,6 +67,18 @@ class AppRepository(context: Context) {
             app.user,
             null,
             null,
+        )
+    }
+
+    /**
+     * Hands the package to the system uninstaller, which shows its own confirmation.
+     * An ordinary app cannot remove another package itself — DELETE_PACKAGES is a
+     * signature permission — so this is the only route available.
+     */
+    fun uninstall(app: LauncherApp) {
+        appContext.startActivity(
+            Intent(Intent.ACTION_DELETE, Uri.fromParts("package", app.packageName, null))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
     }
 

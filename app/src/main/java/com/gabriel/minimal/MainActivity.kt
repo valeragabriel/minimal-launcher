@@ -120,6 +120,7 @@ private fun LauncherRoot(
             onToggleHome = { viewModel.toggleHome(app.packageName) },
             onToggleInList = { listId -> viewModel.toggleInList(listId, app.packageName) },
             onSetLimit = { minutes -> viewModel.setDailyLimit(app.packageName, minutes) },
+            onUninstall = { viewModel.uninstall(app) },
             onAppInfo = { viewModel.openAppInfo(app) },
         )
     }
